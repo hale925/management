@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import positionReducer from './positionSlice'; // Import your position reducer
+import positionReducer from './positionSlice'; 
+import employeeReducer from './employee/employeeSlice'
 
 const store = configureStore({
   reducer: {
-    positions: positionReducer, // Add the reducer to the store
+    positions: positionReducer, 
+    employees: employeeReducer,
   },
 });
 

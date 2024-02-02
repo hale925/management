@@ -1,33 +1,52 @@
-// AddEmployee.jsx
-import React, { useState } from 'react';
-import { Button, Fieldset, Group, TextInput, Textarea, FileInput } from '@mantine/core';
+import React, { useEffect, useState } from 'react';
+import { Button, TextInput, Textarea, Group, Fieldset, FileInput } from '@mantine/core';
+import { updateEmployee, getEmployees } from './employeeApi';
 import { useForm } from 'react-hook-form';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchEmployeesSuccess } from './employeeSlice';
-import { createEmployee, getEmployees } from './employeeApi';
+import { useParams, useNavigate } from 'react-router-dom';
 import SearchableCombobox from '../SearchableCombobox';
 
-function AddEmployee() {
+function EditEmployee() {
   const dispatch = useDispatch();
   const positions = useSelector((state) => state.positions.positions);
+  const { employeeId } = useParams();
+  const employees = useSelector((state) => state.employees.employees)
+  const navigate = useNavigate();
+  
+
   const list = positions.map((pos) => (pos ? pos.name : null)).filter(Boolean);
   list.unshift('null');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [search, setSearch] = useState('');
   const [selectedValue, setSelectedValue] = useState('');
 
+  const { register, handleSubmit, setValue: setFormValue, reset, formState: { errors } } = useForm();
+
+  useEffect(() => {
+    const existingEmployeeData = employees.find((employee) => employee.id === employeeId);
+
+    if (existingEmployeeData) {
+      setFormValue('id', existingEmployeeData.employeeId);
+      setFormValue('fullName', existingEmployeeData.fullName);
+      setFormValue('gender', existingEmployeeData.gender);
+      setFormValue('jobtitle', existingEmployeeData.jobTitle || '');
+      setFormValue('email', existingEmployeeData.email);
+      setFormValue('phoneNumber', existingEmployeeData.phoneNumber);
+      setFormValue('employeeDetail', existingEmployeeData.employeeDetail); 
+    }
+  }, [employeeId, employees, setFormValue]);
+
   const onSubmitHandler = async (data) => {
     try {
-      data.jobTitle = selectedValue;
-      await createEmployee(data);
+      await updateEmployee(employeeId, { ...data, jobTitle: selectedValue || null });
 
-      const updatedEmployees = await getEmployees(); 
-      dispatch(fetchEmployeesSuccess(updatedEmployees));
+      const updatedEmoloyees = await getEmployees();
+      dispatch(fetchEmployeesSuccess(updatedEmoloyees));
 
-      console.log('New employee created successfully!');
+      console.log('Employee updated successfully!');
     } catch (error) {
-      console.error('Error creating employee:', error);
+      console.error('Error updating employee:', error);
     }
   };
 
@@ -35,6 +54,10 @@ function AddEmployee() {
     reset();
     setSearch('');
     setSelectedValue('');
+  };
+
+  const onCancelEdit = () => {
+    navigate(-1);
   };
 
   return (
@@ -47,10 +70,10 @@ function AddEmployee() {
               placeholder="Enter Full Name*: "
               {...register('fullName', { required: true, message: 'Please provide Full Name' })}
               error={errors.fullName}
-              helperText={errors.fullName ? 'Please provide Full Name' : ''}
+              helperText={errors.fullName && 'Please provide Full Name'}
               className="mb-4 "
               classNames={{
-                input: 'w-full md:w-2/3 lg:w-1/2 focus:outline-none bg-gray-600 ',
+                input: 'w-full md:w-2/3 lg:w-1/2 bg-gray-600 ',
               }}
             />
 
@@ -61,9 +84,9 @@ function AddEmployee() {
                 {...register('image', { required: true, message: 'Please provide Image URL' })}
                 error={errors.image}
                 classNames={{
-                  input: 'w-full md:w-2/3 lg:w-1/2 focus:outline-none bg-gray-600 ',
+                  input: 'w-full md:w-2/3 lg:w-1/2 bg-gray-600 ',
                 }}
-                helperText={errors.image ? 'Please provide Image URL' : ''}
+                helperText={errors.image && 'Please provide Image URL'}
                 className="mb-2 px-4 lg"
               />
               <FileInput
@@ -72,7 +95,7 @@ function AddEmployee() {
                 accept="image/*"
                 {...register('image', { required: true, message: 'Please provide an Image' })}
                 error={errors.image}
-                helperText={errors.image ? 'Please provide an Image' : ''}
+                helperText={errors.image && 'Please provide an Image'}
                 className="mb-4 px-4 bg-green-700 py-4 md"
               />
             </Fieldset>
@@ -88,20 +111,23 @@ function AddEmployee() {
               className="mb-4 py-2 flex w-full"
             />
 
-            <TextInput
-          label="Email"
-          placeholder="Enter Email"
-          {...register('email', {
-            required: true,
-            pattern: /\S+@\S+\.\S+/,
-          })}
-          error={errors.email}
-          helperText={errors.email ? 'Please provide a valid Email' : ''}
-          className="mb-4"
-          classNames={{
-            input: `w-full md:w-2/3 lg:w-1/2 focus:outline-none ${errors.email ? 'border-red-500' : 'bg-gray-600'}`,
-          }}
-        />
+  <TextInput
+  label="Email"
+  placeholder="Enter Email"
+  {...register('email', {
+    required: true,
+    pattern: {
+      value: /\S+@\S+\.\S+/,
+      message: 'Invalid Email',
+    },
+  })}
+  error={errors.email}
+  helperText={errors.email && errors.email.message}
+  className="mb-4"
+  classNames={{
+    input: `w-full md:w-2/3 lg:w-1/2 focus:outline-none ${errors.email ? 'border-red-500' : 'bg-gray-600'}`,
+  }}
+/>
 
 
             <TextInput
@@ -109,26 +135,24 @@ function AddEmployee() {
               placeholder="Enter Phone Number"
               {...register('phoneNumber', { required: true, message: 'Please provide Phone Number' })}
               error={errors.phoneNumber}
-              helperText={errors.phoneNumber ? 'Please provide Phone Number' : ''}
+              helperText={errors.phoneNumber && 'Please provide Phone Number'}
               className="mb-4"
               classNames={{
                 input: 'w-full md:w-2/3 lg:w-1/2 focus:outline-none bg-gray-600 ',
               }}
             />
 
-            <TextInput
+<TextInput
               label="Gender"
               placeholder="Write name of your Gender"
               {...register('gender', { required: true, message: 'Please select Gender' })}
               error={errors.gender}
-              helperText={errors.gender ? 'Please enter Male or Female': ''}
+              helperText={errors.gender && errors.gender.message}
               className="mb-4"
               classNames={{
                 input: 'w-full md:w-2/3 bg-gray-600 lg:w-1/2 focus:outline-none',
                 }}
               />
-            
-
 
             <Textarea
               label="Employee Detail (optional)"
@@ -143,13 +167,17 @@ function AddEmployee() {
           </Group>
         </Fieldset>
 
-        <Group position="right px-8">
+        <Group position="right">
           <Button type="button" color="gray" onClick={onClearForm} 
           className="mr-4 hover:bg-white hover:text-gray-600">
             Clear
           </Button>
+          <Button type="button" color="red" onClick={onCancelEdit} 
+          className="mr-4 hover:bg-white hover:text-gray-600">
+            Cancel
+          </Button>
           <Button type="submit" 
-          className="bg-green-500 hover:bg-white hover:text-gray-600 text-white font-bold py-2 px-4 rounded">
+          className="bg-green-500 hover:bg-white-600 text-white hover:text-gray font-bold py-2 px-4 rounded">
             Save
           </Button>
         </Group>
@@ -158,4 +186,4 @@ function AddEmployee() {
   );
 }
 
-export default AddEmployee;
+export default EditEmployee;

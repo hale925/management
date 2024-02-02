@@ -1,115 +1,95 @@
-import React, {useRef} from "react";
-import { useForm } from "react-hook-form" 
-import {
-  Select,
-  Button,
-  MantineProvider,
-  TextInput,
-  Textarea,
+import React, { useState } from 'react';
+import { Button, Group, TextInput, Textarea } from '@mantine/core';
+import { useForm } from 'react-hook-form';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchPositionsSuccess } from './positionSlice';
+import { createPosition, getPositions } from './positionApi';
+import SearchableCombobox from './SearchableCombobox';
+
+
+function AddPosition() {
+  const dispatch = useDispatch();
+  const parentIds = useSelector((state) => state.positions.positions);
+  const list = parentIds.map((pos) => (pos ? pos.name : null)).filter(Boolean);
+  list.unshift("null");
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
   
-  Group,
-  Fieldset,
-} from "@mantine/core";
+  const [search, setSearch] = useState('');
+  const [selectedValue, setSelectedValue] = useState('');
 
-function AddPosition(){
-    const { register, handleSubmit, reset, formState: { errors } } = useForm({
-        resolver: {
-          name: {required: true, message: 'Please enter the job title',},
-          description: {message: 'Please provide a job description',},
-          parentId: { required: true, message: 'Please select a parent ID',}, 
-        }
-      });
+  
+  const onSubmitHandler = async (data) => {
+    try {
+      data.parentId = selectedValue;
+      await createPosition(data);
 
-    const formRef = useRef();
+      const updatedPositions = await getPositions();
+      dispatch(fetchPositionsSuccess(updatedPositions));
 
-      const onSubmitHandler = (data) => {
-        console.log("Submitted data:", data);
-         // Pass data to the provided onSubmit function
-      };
-    
-      const onClearForm = () => {
-        reset();
-        formRef.current.reset(); // Clear browser-cached values
-      };
-    
-      return (
-        <MantineProvider>
-          <form 
-           onSubmit={handleSubmit(onSubmitHandler)} 
-           ref={formRef} 
-           className="flex flex-col mx-auto px-4">
+      console.log('New position created successfully!');
+    } catch (error) {
+      console.error('Error creating position:', error);
+    }
+  };
 
-            <Fieldset legend="Add Position" className="mb-6">
-              <TextInput className="mt-2 block w-full"
-                label="Position Name" 
-                placeholder="Enter Position Name"
-                {...register('name')} 
-                error={errors.name}
-                help={errors.name && 'Please provide Position Name'}/>
-            
-          <Select className="mt-2 block w-full"
-               label="Parent ID"
-               placeholder="Select a parent ID"
-               //data={parentIds}
-               {...register('parentId')}
-               required
-               error={errors.parentId}
-               helperText={errors.parentId && 'Please select a parent ID'}/>
-          {/* <Combobox className="mt-2 block w-full"
-            store={useCombobox()}
-            withinPortal={false}
-            label="Parent ID"
-          >
-            <Combobox.Target>
-              <InputBase
-                rightSection={<Combobox.Chevron />}
-                placeholder="Select or search parent ID"
-                onFocus={() => combobox.openDropdown()}
-              />
-            </Combobox.Target>
-    
-            <Combobox.Dropdown>
-              <Combobox.Options>
-                {parentIds.map((id) => (
-                  <Combobox.Option key={id} value={id}>
-                    {/* Display a user-friendly label for the parent ID */}
-                    {/* Example: <NumberInput value={id} /> */}
-                  {/* </Combobox.Option>
-                ))}
-              </Combobox.Options>
-            </Combobox.Dropdown>
-          </Combobox> */} 
-            </Fieldset>
-            
-            <Fieldset legend="Job Description" className="mb-6">
-            
+  const onClearForm = () => {
+    reset();
+    setSearch('');
+    setSelectedValue('');
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <form onSubmit={handleSubmit(onSubmitHandler)} className="bg-gray-700 text-bold text-white p-8 rounded-lg shadow-md w-full md:w-2/3 lg:w-1/2">
+        <Group position="center" className="mb-4">
+          <TextInput
+            label="Position Name: "
+            placeholder="Enter Position Name"
+            {...register('name', { required: true, message: 'Please provide Position Name' })}
+            error={errors.name}
+            rightSectionWidth= 'padding-right'
+            classNames={{
+              input: 'w-full md:w-2/3 lg:w-1/2 focus:outline-none bg-gray-600 ',
+            }}
+            helperText={errors.name && 'Please provide Position Name'}
+            className='py-4 '
+          />
+
+             <SearchableCombobox
+              list={list}
+              value={selectedValue}
+              setValue={setSelectedValue}
+              search={search}
+              setSearch={setSearch}
+              label="Job Title"
+              
+              className="mb-4 py-2 "
+            />
+
           <Textarea
             label="Job Description (optional)"
             placeholder="Enter the job description"
-            rows={5}
-            cols={100}
-            className="mt-2 block w-full resize-y"
-            {...register('jobDescription')}/>
-    
-            </Fieldset>
-    
-            <Group position="right" className="mt-4">
-              <Button 
-                type="button" 
-                color="gray" 
-                onClick={onClearForm} className="mr-4">
-                Clear
-              </Button>
-              <Button 
-                 type="submit" 
-                 className="bg-green-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                Save
-              </Button>
-            </Group>
-          </form>
-        </MantineProvider>
-      );
+            rows={10}
+            classNames={{
+              input: 'w-full md:w-2/3 lg:w-1/2 focus:outline-none bg-gray-600 ',
+            }}
+            {...register('description')}
+            className="mt-4"
+          />
+        </Group>
 
+        <Group position="right">
+          <Button type="button" color="gray" onClick={onClearForm} className="mr-4">
+            Clear
+          </Button>
+          <Button type="submit" className="bg-green-500 text-white font-bold py-2 px-4 rounded">
+            Save
+          </Button>
+        </Group>
+      </form>
+    </div>
+  );
 }
 
 export default AddPosition;
